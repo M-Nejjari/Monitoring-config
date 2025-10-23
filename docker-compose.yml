@@ -1,0 +1,136 @@
+services:
+
+  mongodb:
+    image: mongo:8.0
+    container_name: travelmemory-mmongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root 
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: travelmemory
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - travelmemory-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: travelmemory-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    networks:
+      - travelmemory-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: travelmemory_grafana
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false 
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - travelmemory-network
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: travelmemory-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)	'
+    volumes:
+      - /proc:/host/proc:ro
+      - /:/rootfs:ro
+      - /sys:/host/sys:ro
+    networks:
+      - travelmemory-network
+ 
+  mongodb-exporter:
+    image: percona/mongodb_exporter:0.47.1
+    container_name: travelmemory-mongodb-exporter
+    restart: unless-stopped
+    ports:
+      - "9216:9216"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin@mongodb:27017/travelmemory?authSource=admin
+    depends_on:
+      - mongodb
+    networks:
+      - travelmemory-network
+
+
+
+
+
+  backend:
+    build: ./backend
+    container_name: travelmemory-backend
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://admin:admin@mongodb:27017/travelmemory?authSource=admin
+    depends_on:
+      - mongodb
+    networks:
+      - travelmemory-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+ # frontend:
+  #  build: ./frontend
+   # container_name: travelmemory-frontend
+    #restart: unless-stopped
+    #ports:
+     # - "3001:3000"
+    #environment:
+     # - REACT_APP_API_URL=http://localhost:3003
+    #depends_on:
+     # - backend
+    #networks:
+     # - travelmemory-network
+    #volumes:
+     # - ./frontend:/app
+      #- /app/node_modules
+
+
+
+
+volumes:
+  mongodb_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  travelmemory-network:
+    driver : bridge
+
+
+
+
+
+
+
+
+
