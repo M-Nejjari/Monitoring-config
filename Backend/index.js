@@ -2,12 +2,24 @@ import express from 'express';
 import client from 'prom-client';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import mongoose from 'mongoose';
 import tripRoutes from './routes/trip.routes.js'; // ✅ ESM import (note .js extension!)
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/travelmemory';
+
+// MongoDB connection
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+  })
+  .catch((error) => {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  });
 
 // Middleware
 app.use(express.json());

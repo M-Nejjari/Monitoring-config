@@ -1,17 +1,19 @@
-services:
+version: '3.8'
 
+services:
   mongodb:
-    image: mongo:8.0
+    image: mongo:latest
     container_name: travelmemory-mmongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root 
-      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
       MONGO_INITDB_DATABASE: travelmemory
     volumes:
       - mongodb_data:/data/db
+      - ./Monitoring/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - travelmemory-network
 
@@ -36,7 +38,31 @@ services:
       - "3002:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false 
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_FEATURE_TOGGLES_ENABLE=alertingSimplifiedRouting,alertingQueryAndExpressionsStepMode
+    entrypoint:
+      # this part (entrypoint) allow grafana to be ready automatically, still trying 
+      # it out it's purely optional
+      # opt out of it if you want he regular setup
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Loki
+          type: loki
+          access: proxy 
+          orgId: 1
+          url: http://loki:3100
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+        EOF
+        /run.sh
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
@@ -70,18 +96,38 @@ services:
     ports:
       - "9216:9216"
     environment:
-      - MONGODB_URI=mongodb://admin:admin@mongodb:27017/travelmemory?authSource=admin
+      - MONGODB_URI=mongodb://mongodb:27017/travelmemory
     depends_on:
       - mongodb
     networks:
       - travelmemory-network
 
 
+  loki:
+    image: grafana/loki:latest
+    container_name: travelmemory-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - travelmemory-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: travelmemory-promtail
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - travelmemory-network
+
 
 
 
   backend:
-    build: ./backend
+    build: ./Backend
     container_name: travelmemory-backend
     restart: unless-stopped
     ports:
@@ -89,33 +135,30 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - MONGODB_URI=mongodb://admin:admin@mongodb:27017/travelmemory?authSource=admin
+      - MONGODB_URI=mongodb://mongodb:27017/travelmemory
     depends_on:
       - mongodb
     networks:
       - travelmemory-network
     volumes:
-      - ./backend:/app
+      - ./Backend:/app
       - /app/node_modules
 
- # frontend:
-  #  build: ./frontend
-   # container_name: travelmemory-frontend
-    #restart: unless-stopped
-    #ports:
-     # - "3001:3000"
-    #environment:
-     # - REACT_APP_API_URL=http://localhost:3003
-    #depends_on:
-     # - backend
-    #networks:
-     # - travelmemory-network
-    #volumes:
-     # - ./frontend:/app
-      #- /app/node_modules
-
-
-
+  # frontend:
+  #   build: ./Frontend
+  #   container_name: travelmemory-frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:3003
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - travelmemory-network
+  #   volumes:
+  #     - ./Frontend:/app
+  #     - /app/node_modules
 
 volumes:
   mongodb_data:
@@ -124,13 +167,5 @@ volumes:
 
 networks:
   travelmemory-network:
-    driver : bridge
-
-
-
-
-
-
-
-
+    driver: bridge
 
