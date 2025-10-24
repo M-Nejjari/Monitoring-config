@@ -14,8 +14,6 @@ Grafana connects to both Prometheus (metrics) and Loki (logs) to visualize every
 
 
 
-<img width="1024" height="1536" alt="monitoring" src="https://github.com/user-attachments/assets/e9082820-df66-4b12-92aa-01f026b06e35" />
-
 
 
 ✅ Summary Table
@@ -122,4 +120,5 @@ As i prefer working with python it will be the next step trying to adapt it that
 
 
 PS : this is a project to learn this stack be nice pls and let me know what i can improve
+
 
