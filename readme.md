@@ -11,6 +11,27 @@ Node Exporter exposes system-level metrics.
 Prometheus periodically scrapes metrics from both exporters.
 
 Grafana connects to both Prometheus (metrics) and Loki (logs) to visualize everything.
+
+
+
+<img width="1024" height="1536" alt="monitoring" src="https://github.com/user-attachments/assets/e9082820-df66-4b12-92aa-01f026b06e35" />
+
+
+
+✅ Summary Table
+
+| Component      | Type             | Data Collected   | Feeds Into     |
+| -------------- | ---------------- | ---------------- | -------------- |
+| Grafana        | Visualization    | Metrics + Logs   | —              |
+| Prometheus     | Metrics DB       | From exporters   | Grafana        |
+| Loki           | Log DB           | From Promtail    | Grafana        |
+| Promtail       | Log collector    | From apps        | Loki           |
+| Node Exporter  | Metrics exporter | System metrics   | Prometheus     |
+| Mongo Exporter | Metrics exporter | MongoDB metrics  | Prometheus     |
+| MongoDB        | Database         | Application data | Mongo Exporter |
+
+
+
 ⚙️ Components Explained
 🟢 Grafana
 
@@ -101,3 +122,4 @@ As i prefer working with python it will be the next step trying to adapt it that
 
 
 PS : this is a project to learn this stack be nice pls and let me know what i can improve
+
