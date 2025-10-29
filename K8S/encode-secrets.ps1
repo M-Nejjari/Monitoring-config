@@ -4,22 +4,30 @@
 
 param(
   [string]$Username,
-  [string]$Password,
+  [SecureString]$Password,
   [string]$Uri,
   [string]$Namespace = "travelmemory",
   [string]$SecretName = "mongo-secrets"
 )
 
 if (-not $Username) { $Username = Read-Host "Enter Mongo root username" }
-if (-not $Password) { $Password = Read-Host -AsSecureString "Enter Mongo root password" | ForEach-Object { [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($_)) } }
+if (-not $Password) { $Password = Read-Host -AsSecureString "Enter Mongo root password" }
 if (-not $Uri) { $Uri = Read-Host "Enter Mongo connection URI" }
 
 function ToBase64([string]$s) {
   return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($s))
 }
 
+$script:SecureToPlain = {
+  param([SecureString]$Secure)
+  $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure)
+  try { [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) }
+  finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+}
+
 $b64User = ToBase64 $Username
-$b64Pass = ToBase64 $Password
+$plainPassword = & $script:SecureToPlain $Password
+$b64Pass = ToBase64 $plainPassword
 $b64Uri  = ToBase64 $Uri
 
 Write-Output "# Paste under data: in your Kubernetes Secret"
