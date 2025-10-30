@@ -1,0 +1,3 @@
+serviceMonitors:
+  enabled: true
+scrapeInterval: 30s

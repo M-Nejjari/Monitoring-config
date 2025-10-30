@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-exporter
+  labels:
+    app: mongo-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo-exporter
+  template:
+    metadata:
+      labels:
+        app: mongo-exporter
+    spec:
+      containers:
+      - name: mongodb-exporter
+        image: percona/mongodb_exporter:latest
+        args:
+        - "--mongodb.uri=mongodb://mongo:27017/mernmonitor"
+        ports:
+        - containerPort: 9216

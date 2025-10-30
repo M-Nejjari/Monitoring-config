@@ -1,110 +1,90 @@
-🚀 How It All Works Together
+# MERN App Monitoring on Kubernetes
 
-Node.js app runs and writes logs locally.
+## Overview
+This repo demonstrates a full-stack production-ready MERN app (Mongo, Express, React, Node) running on Kubernetes, with integrated monitoring using Prometheus and Grafana. Each component runs in its own container, managed by Kubernetes. Monitoring is production-grade, collecting application and infrastructure metrics.
 
-Promtail reads those logs and ships them to Loki.
+---
 
-MongoDB Exporter exposes MongoDB performance metrics on a /metrics endpoint.
+## Project Structure
 
-Node Exporter exposes system-level metrics.
+```
+mern-monitoring/
+├── app/
+│   ├── backend/                  # Node.js/Express API (Prometheus metrics)
+│   └── frontend/                 # React frontend
+├── k8s/
+│   ├── manifests/               # K8s manifests for app deployment/services
+│   ├── monitoring/              # Monitoring configs (Prometheus, Grafana, Exporters)
+│   └── scripts/                 # Helper scripts (eg: encode-secrets.ps1)
+├── .gitignore
+├── .dockerignore
+└── README.md
+```
 
-Prometheus periodically scrapes metrics from both exporters.
+### Folders and Key Files
+- `app/backend/` — Node API with `/metrics` endpoint (Prometheus format)
+- `app/frontend/` — React app (serves static content via Nginx or Node)
+- `k8s/manifests/` — K8s Deployments & Services (backend, frontend, MongoDB)
+- `k8s/monitoring/` — Monitoring stack (Helm values, ServiceMonitor, exporters)
+- `k8s/scripts/encode-secrets.ps1` — PowerShell for safer secrets management
+  
+---
 
-Grafana connects to both Prometheus (metrics) and Loki (logs) to visualize everything.
+## How to Use
 
+### Prerequisites
+- Docker, Kubernetes cluster (minikube recommended), kubectl, and Helm
+- DockerHub (for image publishing)
 
+### 1. Build & Push Images
+```
+docker build -t <dockerhub-username>/mern-backend ./app/backend
+docker build -t <dockerhub-username>/mern-frontend ./app/frontend
+docker push <dockerhub-username>/mern-backend
+docker push <dockerhub-username>/mern-frontend
+```
 
+### 2. Deploy to Kubernetes
+```
+kubectl apply -f k8s/manifests/
+```
 
+### 3. Deploy Monitoring (Prometheus+Grafana)
+```
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prom prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace -f k8s/monitoring/prometheus-values.yaml
+kubectl apply -f k8s/monitoring/
+```
+---
 
-✅ Summary Table
+## Monitoring Details
+- **Prometheus**: Collects metrics from backend (`/metrics`) & mongo-exporter
+- **Grafana**: Dashboards from Prometheus data-source
+- **MongoDB Exporter**: Exposes DB metrics for Prometheus
+- **ServiceMonitor**: Points Prometheus to backend metrics endpoint
 
-| Component      | Type             | Data Collected   | Feeds Into     |
-| -------------- | ---------------- | ---------------- | -------------- |
-| Grafana        | Visualization    | Metrics + Logs   | —              |
-| Prometheus     | Metrics DB       | From exporters   | Grafana        |
-| Loki           | Log DB           | From Promtail    | Grafana        |
-| Promtail       | Log collector    | From apps        | Loki           |
-| Node Exporter  | Metrics exporter | System metrics   | Prometheus     |
-| Mongo Exporter | Metrics exporter | MongoDB metrics  | Prometheus     |
-| MongoDB        | Database         | Application data | Mongo Exporter |
+Visualize at Grafana dashboard (see README for port-forward instructions). Default user `admin`, password from K8s secret.
 
+---
 
+## Purpose of Key Files/Folders
+- **Dockerfile** (each): Builds that component for portable deployment
+- **K8s manifests**: Declarative, repeatable infrastructure setup
+- **monitoring/**: Integrates monitoring platform for proactive alerting and metrics
+- **encode-secrets.ps1**: Securely encodes secrets for Kubernetes
 
-⚙️ Components Explained
-🟢 Grafana
+---
 
-Role: Visualization and dashboard tool.
+## How to Extend or Reproduce
+1. Replace app logic with your own (Python, ML, Java — just add `/metrics` endpoint)
+2. Follow the same containerization and K8s/monitoring pattern
+3. For Python, use `prometheus_client` to expose `/metrics` in your Flask/FastAPI
 
-Function: Displays metrics (from Prometheus) and logs (from Loki) in real time.
+---
 
-Why it’s used: To monitor system health, app performance, and logs in one unified interface.
-
-🔵 Prometheus
-
-Role: Metrics collection and storage system.
-
-Function: Scrapes metrics from exporters and stores them in a time-series database.
-
-Data Sources: Node Exporter (system metrics), Mongo Exporter (database metrics), and possibly your backend app (custom metrics).
-
-🟣 Loki
-
-Role: Centralized log aggregation system.
-
-Function: Stores and indexes logs from different services, but doesn’t parse them as heavily as ElasticSearch.
-
-Why it’s used: Lightweight and integrates perfectly with Grafana.
-
-🟡 Promtail
-
-Role: Log collector for Loki.
-
-Function: Tails log files from containers or the host system and sends them to Loki.
-
-Where it runs: On the same machine as your services.
-
-🟠 MongoDB
-
-Role: Database used by your application.
-
-Function: Stores application data (users, posts, logs, etc.).
-
-Why included: The app data itself is monitored and logged through the exporters.
-
-🔴 MongoDB Exporter
-
-Role: Provides MongoDB performance metrics to Prometheus.
-
-Examples of metrics:
-
-Connections count
-
-Query performance
-
-Memory usage
-
-Why it’s used: To monitor the health and performance of your MongoDB instance.
-
-⚫ Node Exporter
-
-Role: Collects system-level metrics (CPU, RAM, Disk, Network) from the host machine.
-
-Function: Prometheus scrapes these metrics to monitor infrastructure health.
-
-Why it’s used: Helps detect resource bottlenecks or hardware issues.
-
-
-
-
-🧰 Additional Required Tools
-
-| Tool                        | Purpose                                                                  |
-| --------------------------- | ------------------------------------------------------------------------ |
-| **Docker**                  | Runs each service in isolated containers.                                |
-| **Docker Compose**          | Orchestrates all containers easily using one `docker-compose.yaml` file. |
-| **Node.js (Optional)**      | If your app backend is built in JavaScript/TypeScript.                   |
-| **cAdvisor (Optional)**     | To monitor container resource usage.                                     |
-| **Alertmanager (Optional)** | For sending alerts based on Prometheus rules.                            |
+## License
+MIT
 
 
 
